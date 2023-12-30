@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Real-time Chat Application</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+  <!-- ... (previous code) ... -->
+  <h1>Welcome to the Chat Room</h1>
+  <div id="login" class="section">
+    <input id="usernameInput" class="input" autocomplete="off" placeholder="Enter your username" />
+    <button id="" class="button" onclick="login()">Login</button>
+  </div>
+  <div id="chat" class="section" style="display:none;">
+    <div id="roomSelection" class="room-selection" style="display:block;">
+      <input id="roomNameInput" class="input" autocomplete="off" placeholder="Enter chat room name" />
+      <button onclick="joinChatRoom()" class="button">Join Chat Room</button>
+      <button onclick="startPrivateChat()" class="button">Start Private Chat</button>
+    </div>
+    <div id="chatRoom" style="display:none;">
+      <h2 class="room-header">Chat Room: <span id="currentRoom"></span></h2>
+      <ul id="messages" class="messages"></ul>
+      <input id="messageInput" oninput="handleTyping()" class="input" autocomplete="off" placeholder="Type your message..." />
+      <button id="sendMessageBtn" class="button" onclick="sendMessage()">Send</button>
+      <p id="typingStatus" class="typing-status"></p>
+    </div>
+  </div>
+</div>
+<!-- ... (remaining code) ... -->
+
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let username = '';
+    let currentRoom = '';
+
+    // Function to display chat messages
+    function displayMessage(message) {
+        const messages = document.getElementById('messages');
+        const li = document.createElement('li');
+        li.textContent = message;
+        messages.appendChild(li);
+    }
+
+    // Function to display typing indicators
+    function displayTyping(username, isTyping){
+        const typingStatus = document.getElementById('typingStatus');
+        if(isTyping){
+            typingStatus.textContent = `${username} is typing...`
+        }else{
+            typingStatus.textContent = '';
+        }
+    }
+
+    // Event handler for typing status
+    let typingTimeout;
+
+    function handleTyping(){
+        if(currentRoom){
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(()=>{
+                socket.emit('typing',false);
+            },1000);    // Send typing = false after 1 second of inactivity
+
+            socket.emit('typing',true);
+        }
+    }
+
+    function login(){
+        const usernameInput = document.getElementById('usernameInput');
+        username = usernameInput.value.trim();
+        if(username){
+            document.getElementById('login').style.display = 'none';
+            document.getElementById('chat').style.display = 'block';
+            document.getElementById('messageInput').style.display = 'block';
+            document.getElementById('messageInput').focus();
+            document.getElementById('sendMessageBtn').style.display = 'block';
+            socket.emit('login',username);
+        }
+    }
+
+    function joinChatRoom() {
+        const roomNameInput = document.getElementById('roomNameInput');
+        const roomName = roomNameInput.value.trim();
+        if (roomName) {
+        currentRoom = roomName;
+        document.getElementById('roomSelection').style.display = 'none';
+        document.getElementById('chatRoom').style.display = 'block';
+        document.getElementById('currentRoom').textContent = roomName;
+        document.getElementById('messageInput').focus();
+        // socket.join(currentRoom);
+        socket.emit('joinRoom', currentRoom);
+        }
+    }
+
+    function startPrivateChat(){
+        const recipientInput = prompt('Enter the username of the person you want to chat with:');
+        if(recipientInput){
+            currentRoom = ''; // Private chat, so not specific room is needed.
+            document.getElementById('roomSelection').style.display = 'none';
+            document.getElementById('chatRoom').style.display = 'block';
+            document.getElementById('currentRoom').textContent = `Private chat with ${recipientInput}`;
+            document.getElementById('messageInput').focus();
+            socket.emit('privateChat', recipientInput);
+        }
+    }
+
+    socket.on('loginError', (errorMessage)=>{
+        document.getElementById('login').style.display = 'block';
+        document.getElementById('chat').style.display = 'none';
+        alert(errorMessage);
+    })
+
+    socket.on('privateChatError', (errorMessage)=>{
+        document.getElementById('roomSelection').style.display = 'block';
+        document.getElementById('chatRoom').style.display = 'none';
+        document.getElementById('currentRoom').textContent = ``;
+        alert(errorMessage);
+    })
+
+    function sendMessage() {
+      const messageInput = document.getElementById('messageInput');
+      const message = messageInput.value.trim();
+      if (message) {
+        socket.emit('chatMessage', message);
+        messageInput.value = '';
+      }
+    }
+
+    socket.on('chatMessage', (message) => {
+      const messages = document.getElementById('messages');
+      const li = document.createElement('li');
+      li.textContent = message;
+      messages.appendChild(li);
+      console.log(message);
+    });
+
+     // Listen for message history when the user joins a room
+    socket.on('messageHistory', (history) => {
+        const messages = document.getElementById('messages');
+        messages.innerHTML = ''; // Clear existing messages
+
+        history.forEach((entry) => {
+        const message = entry.user === username ? `You: ${entry.message}` : `${entry.user}: ${entry.message}`;
+        displayMessage(message);
+        });
+    });
+
+    socket.on('typing',(data)=>{
+        displayTyping(data.username, data.isTyping);
+    });
+
+    socket.on('startPrivateChat', (sender)=>{
+        console.log(sender, ' is sending pv');
+        // document.getElementById('roomSelection').style.display = 'none';
+        // document.getElementById('chatRoom').style.display = 'block';
+        // document.getElementById('currentRoom').textContent = `Private chat with ${sender}`;
+        // document.getElementById('messageInput').focus();
+    })
+  </script>
+</body>
+</html>
