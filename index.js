@@ -90,7 +90,7 @@ io.on('connection',(socket)=>{
         // Send message history to the user when they join a room
         if (chatHistory.has(currentRoom)) {
             const messageHistory = chatHistory.get(currentRoom);
-            console.log(messageHistory);
+            // console.log(messageHistory);
             socket.emit('messageHistory', messageHistory);
         }
     })
@@ -121,7 +121,7 @@ io.on('connection',(socket)=>{
     
             // Remove the user from the users map
             users.delete(username);
-            console.log('users: ',users);
+            // console.log('users: ',users);
             console.log(`${username} logged out`);
     
             // Notify all users about the updated user count
