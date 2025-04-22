@@ -143,7 +143,7 @@
     function sendMessage() {
       const messageInput = document.getElementById('messageInput');
       const message = messageInput.value.trim();
-      if (message) {
+      if (message && message != "") {
         socket.emit('chatMessage', message);
         messageInput.value = '';
         displayMessage(`You said: ${message}`);
